@@ -14,7 +14,7 @@ function AdminDashboard() {
 
   const fetchViolations = async () => {
     try {
-      const response = await axios.get("http://localhost:5000/violations");
+      const response = await axios.get("https://node-server-backend-9dd8.onrender.com/violations");
       setViolations(response.data);
       setError(null); // Reset error if successful
     } catch (err) {

@@ -72,7 +72,7 @@ function ProctoredTest() {
       `;
       
       // Using your backend to proxy the AI request
-      const response = await axios.post("http://localhost:5000/generate-ai-response", {
+      const response = await axios.post("https://node-server-backend-9dd8.onrender.com/generate-ai-response", {
         prompt: testPrompt
       });
       
@@ -107,7 +107,7 @@ function ProctoredTest() {
       alert(`Violation Detected: ${type}`);
       setWarning(`Violation: ${type}`);
       try {
-        await axios.post("http://localhost:5000/log-violation", { 
+        await axios.post("https://node-server-backend-9dd8.onrender.com/log-violation", { 
           type,
           email,
           skill
@@ -236,7 +236,7 @@ function ProctoredTest() {
   // Submit test answers back to the server
   const submitTest = async () => {
     try {
-      const response = await axios.post("http://localhost:5000/submit-test", {
+      const response = await axios.post("https://node-server-backend-9dd8.onrender.com/submit-test", {
         email: email,
         skill: skill,
         questions: questions,
@@ -249,7 +249,7 @@ function ProctoredTest() {
       
       // Redirect back to Streamlit after 2 seconds
       setTimeout(() => {
-        window.location.href = "http://localhost:8501";
+        window.location.href = "https://streamlit-app-4xyh.onrender.com";
       }, 2000);
     } catch (err) {
       console.error("Error submitting test:", err);
@@ -301,7 +301,7 @@ function ProctoredTest() {
         }}>
           <p style={{ color: "red" }}>{warning}</p>
           <button 
-            onClick={() => window.location.href = "http://localhost:8501"}
+            onClick={() => window.location.href = "https://streamlit-app-4xyh.onrender.com"}
             style={{
               padding: "10px 20px",
               backgroundColor: "#f44336",

@@ -166,7 +166,7 @@ function ProctoredTest() {
         const formData = new FormData();
         formData.append("image", blob, "frame.jpg");
         
-        axios.post("http://localhost:5001/detect_faces", formData, {
+        axios.post("https://webcam-proctoring-backend.onrender.com/detect_faces", formData, {
           headers: {
             'Content-Type': 'multipart/form-data'
           }
@@ -180,7 +180,7 @@ function ProctoredTest() {
         .catch(err => console.error("Face detection error:", err));
       }, "image/jpeg", 0.95); // Higher quality JPEG
       
-    }, 3000); // Check every 3 seconds instead of 1 for better performance
+    }, 2000); // Check every 2 seconds instead of 1 for better performance
     
     return () => clearInterval(interval);
   }, [testStarted, testSubmitted]);

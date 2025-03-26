@@ -15,7 +15,7 @@ function ProctoredTest() {
   const videoRef = useRef(null);
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-
+  const [scheduledCountdown, setScheduledCountdown] = useState(null);
   const skill = searchParams.get("skill") || "";
   const email = searchParams.get("email") || "";
   const testDate = searchParams.get("testDate") || "";
@@ -28,16 +28,21 @@ function ProctoredTest() {
       const currentDate = now.toISOString().split('T')[0];
       const currentHour = now.getHours();
       const currentMinute = now.getMinutes();
-      
       const scheduledDate = testDate;
       const [scheduledHour, scheduledMinute] = testTime.split(':').map(Number);
       
       // Check if date is valid
       if (currentDate < scheduledDate) {
         setWarning(`This test is scheduled for ${scheduledDate} at ${testTime}. Please return at the scheduled time.`);
+        
+        // Calculate time until test in seconds
+        const scheduledDateTime = new Date(`${scheduledDate}T${testTime}`);
+        const timeUntilTest = Math.floor((scheduledDateTime - now) / 1000);
+        setScheduledCountdown(timeUntilTest);
+        
       } else if (currentDate > scheduledDate) {
         setWarning(`This test was scheduled for ${scheduledDate} at ${testTime} and has expired. Please contact your administrator.`);
-      } 
+      }
       // If same date, check time
       else if (currentDate === scheduledDate) {
         const currentTimeMinutes = currentHour * 60 + currentMinute;
@@ -46,12 +51,51 @@ function ProctoredTest() {
         // Allow test to be taken 15 minutes before scheduled time and up to 60 minutes after
         if (currentTimeMinutes < scheduledTimeMinutes - 15) {
           setWarning(`This test is scheduled for today at ${testTime}. Please return at the scheduled time.`);
+          
+          // Calculate time until test in seconds
+          const timeUntilTest = (scheduledTimeMinutes - 15 - currentTimeMinutes) * 60;
+          setScheduledCountdown(timeUntilTest);
         } else if (currentTimeMinutes > scheduledTimeMinutes + 60) {
           setWarning(`This test was scheduled for today at ${testTime} and has expired. Please contact your administrator.`);
         }
       }
     }
   }, [testDate, testTime]);
+
+// Add a new useEffect for the scheduled countdown timer
+useEffect(() => {
+  if (scheduledCountdown === null || testStarted) return;
+  
+  const interval = setInterval(() => {
+    setScheduledCountdown(prev => {
+      if (prev <= 1) {
+        clearInterval(interval);
+        // Refresh the page when countdown reaches zero to update the test availability
+        window.location.reload();
+        return 0;
+      }
+      return prev - 1;
+    });
+  }, 1000);
+  
+  return () => clearInterval(interval);
+}, [scheduledCountdown, testStarted]);
+
+// Format time display for days, hours, minutes, seconds
+const formatCountdown = (seconds) => {
+  const days = Math.floor(seconds / (24 * 3600));
+  const hours = Math.floor((seconds % (24 * 3600)) / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  const secs = seconds % 60;
+  
+  let result = '';
+  if (days > 0) result += `${days}d `;
+  if (hours > 0 || days > 0) result += `${hours}h `;
+  if (minutes > 0 || hours > 0 || days > 0) result += `${minutes}m `;
+  result += `${secs}s`;
+  
+  return result;
+};
   
 
   console.log("Skill:", skill);
@@ -316,6 +360,13 @@ function ProctoredTest() {
           </button>
         </div>
       )}
+      
+      {scheduledCountdown && scheduledCountdown > 0 && (
+      <div className="countdown-timer">
+        <h3>Time until test is available:</h3>
+        <div className="timer">{formatCountdown(scheduledCountdown)}</div>
+      </div>
+    )}
       
       {!testStarted && !warning && (
         <div>

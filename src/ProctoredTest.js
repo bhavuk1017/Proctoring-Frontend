@@ -192,7 +192,7 @@ const formatCountdown = (seconds) => {
     if (!testStarted || testSubmitted) return;
     
     // Connect to socket server
-    const proctorSocket = new WebSocket("wss://webcam-proctoring-backend.onrender.com/ws");
+    const proctorSocket = io("wss://webcam-proctoring-backend.onrender.com/ws");
     setSocket(proctorSocket);
     
     // Handle socket connection

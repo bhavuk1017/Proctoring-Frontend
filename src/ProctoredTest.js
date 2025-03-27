@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import axios from "axios";
+import io from 'socket.io-client';
+
 
 function ProctoredTest() {
   const [questions, setQuestions] = useState([]);
@@ -20,6 +22,7 @@ function ProctoredTest() {
   const email = searchParams.get("email") || "";
   const testDate = searchParams.get("testDate") || "";
   const testTime = searchParams.get("testTime") || "";
+  const [socket, setSocket] = useState(null);
   
   // Check if today is the scheduled test date
   useEffect(() => {
@@ -185,49 +188,52 @@ const formatCountdown = (seconds) => {
     });
   }, [testStarted]);
 
-  // Capture & send frames every second for face detection
   useEffect(() => {
     if (!testStarted || testSubmitted) return;
     
+    // Connect to socket server
+    const proctorSocket = io('https://webcam-proctoring-backend.onrender.com');
+    setSocket(proctorSocket);
+    
+    // Handle socket connection
+    proctorSocket.on('connect', () => {
+      console.log('Connected to proctoring server');
+      proctorSocket.emit('register', { email, skill });
+    });
+    
+    // Handle violations from server
+    proctorSocket.on('violation', (data) => {
+      logViolation(data.type);
+    });
+    
+    // Handle disconnection
+    proctorSocket.on('disconnect', () => {
+      console.log('Disconnected from proctoring server');
+    });
+    
+    // Set up interval for sending frames
     const interval = setInterval(() => {
       if (!videoRef.current || !videoRef.current.srcObject) return;
-      
-      // Make sure video is actually playing and has dimensions
       if (videoRef.current.videoWidth === 0 || videoRef.current.videoHeight === 0) return;
       
       const canvas = document.createElement("canvas");
       canvas.width = videoRef.current.videoWidth;
       canvas.height = videoRef.current.videoHeight;
       const ctx = canvas.getContext("2d");
-      
-      // Draw the current video frame to the canvas
       ctx.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
       
-      // Convert canvas to blob and send to server
-      canvas.toBlob((blob) => {
-        if (!blob) return;
-        
-        const formData = new FormData();
-        formData.append("image", blob, "frame.jpg");
-        
-        axios.post("https://webcam-proctoring-backend.onrender.com/detect_faces", formData, {
-          headers: {
-            'Content-Type': 'multipart/form-data'
-          }
-        })
-        .then(res => {
-          console.log("Face detection response:", res.data);
-          if (res.data.violation) {
-            logViolation(res.data.violation);
-          }
-        })
-        .catch(err => console.error("Face detection error:", err));
-      }, "image/jpeg", 0.95); // Higher quality JPEG
-      
-    }, 2000); // Check every 2 seconds instead of 1 for better performance
+      // Send frame as base64 string instead of blob for socket efficiency
+      const imageData = canvas.toDataURL('image/jpeg', 0.7);
+      proctorSocket.emit('frame', { image: imageData });
+    }, 2000);
     
-    return () => clearInterval(interval);
-  }, [testStarted, testSubmitted]);
+    return () => {
+      clearInterval(interval);
+      if (proctorSocket) {
+        proctorSocket.disconnect();
+      }
+    };
+  }, [testStarted, testSubmitted, email, skill]);
 
   // Detect tab switching
   useEffect(() => {
@@ -274,6 +280,10 @@ const formatCountdown = (seconds) => {
     if (videoRef.current && videoRef.current.srcObject) {
       videoRef.current.srcObject.getTracks().forEach(track => track.stop());
       videoRef.current.srcObject = null;
+    }
+    if (socket) {
+      socket.disconnect();
+      setSocket(null);
     }
   };
 

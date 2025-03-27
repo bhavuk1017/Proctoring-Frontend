@@ -166,78 +166,74 @@ const formatCountdown = (seconds) => {
   };
 
   // Start camera when test begins
- // Start camera when test begins
-useEffect(() => {
-  if (!testStarted) return;
-
-  navigator.mediaDevices
-    .getUserMedia({
-      video: {
+  useEffect(() => {
+    if (!testStarted) return;
+    
+    navigator.mediaDevices.getUserMedia({ 
+      video: { 
         width: { ideal: 640 },
         height: { ideal: 480 },
-        facingMode: "user",
-      },
+        facingMode: "user"
+      } 
     })
-    .then((stream) => {
+    .then(stream => {
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
-        videoRef.current.play().catch((e) => console.error("Error playing video:", e));
+        videoRef.current.play().catch(e => console.error("Error playing video:", e));
       }
     })
-    .catch((err) => {
+    .catch(err => {
       console.error("Camera error:", err);
       logViolation("Camera Access Denied");
     });
-}, [testStarted]);
+  }, [testStarted]);
 
-// Connect to WebSocket server and send frames for detection
-useEffect(() => {
-  if (!testStarted || testSubmitted) return;
-
-  // Connect to WebSocket server
-  const proctorSocket = new WebSocket("wss://webcam-proctoring-backend.onrender.com/ws");
-  setSocket(proctorSocket);
-
-  // Handle socket connection
-  proctorSocket.on("connect", () => {
-    console.log("Connected to proctoring server");
-    proctorSocket.emit("register", { email, skill });
-  });
-
-  // Handle violations from server
-  proctorSocket.on("violation", (data) => {
-    logViolation(data.type);
-  });
-
-  // Handle disconnection
-  proctorSocket.on("disconnect", () => {
-    console.log("Disconnected from proctoring server");
-  });
-
-  // Set up interval for sending frames
-  const interval = setInterval(() => {
-    if (!videoRef.current || !videoRef.current.srcObject) return;
-    if (videoRef.current.videoWidth === 0 || videoRef.current.videoHeight === 0) return;
-
-    const canvas = document.createElement("canvas");
-    canvas.width = videoRef.current.videoWidth;
-    canvas.height = videoRef.current.videoHeight;
-    const ctx = canvas.getContext("2d");
-    ctx.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
-
-    // Send frame as base64 string instead of blob for socket efficiency
-    const imageData = canvas.toDataURL("image/jpeg", 0.7);
-    proctorSocket.emit("frame", { image: imageData });
-  }, 2000);
-
-  return () => {
-    clearInterval(interval);
-    if (proctorSocket) {
-      proctorSocket.disconnect();
-    }
-  };
-}, [testStarted, testSubmitted, email, skill]);
-
+  useEffect(() => {
+    if (!testStarted || testSubmitted) return;
+    
+    // Connect to socket server
+    const proctorSocket = io('https://webcam-proctoring-backend.onrender.com/ws');
+    setSocket(proctorSocket);
+    
+    // Handle socket connection
+    proctorSocket.on('connect', () => {
+      console.log('Connected to proctoring server');
+      proctorSocket.emit('register', { email, skill });
+    });
+    
+    // Handle violations from server
+    proctorSocket.on('violation', (data) => {
+      logViolation(data.type);
+    });
+    
+    // Handle disconnection
+    proctorSocket.on('disconnect', () => {
+      console.log('Disconnected from proctoring server');
+    });
+    
+    // Set up interval for sending frames
+    const interval = setInterval(() => {
+      if (!videoRef.current || !videoRef.current.srcObject) return;
+      if (videoRef.current.videoWidth === 0 || videoRef.current.videoHeight === 0) return;
+      
+      const canvas = document.createElement("canvas");
+      canvas.width = videoRef.current.videoWidth;
+      canvas.height = videoRef.current.videoHeight;
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
+      
+      // Send frame as base64 string instead of blob for socket efficiency
+      const imageData = canvas.toDataURL('image/jpeg', 0.7);
+      proctorSocket.emit('frame', { image: imageData });
+    }, 2000);
+    
+    return () => {
+      clearInterval(interval);
+      if (proctorSocket) {
+        proctorSocket.disconnect();
+      }
+    };
+  }, [testStarted, testSubmitted, email, skill]);
 
   // Detect tab switching
   useEffect(() => {

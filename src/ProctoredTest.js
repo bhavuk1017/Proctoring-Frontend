@@ -296,7 +296,7 @@ const formatCountdown = (seconds) => {
       videoRef.current.srcObject = null;
     }
     if (socket) {
-      socket.disconnect();
+      socket.close();
       setSocket(null);
     }
   };
